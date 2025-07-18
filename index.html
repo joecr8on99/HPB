@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Manager Mock-up</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF CDN for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF-AutoTable CDN for professional tables -->
+    <script src="https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Default fallback, will be overridden by custom color */
+        }
+        /* Custom styles for drag-and-drop feedback */
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed theme('colors.primary-blue'); /* Use custom primary blue */
+        }
+        .drag-over {
+            background-color: theme('colors.light-blue'); /* Use custom light blue */
+            border: 2px dashed theme('colors.primary-blue');
+        }
+        /* Style for active tab button */
+        .tab-button.active {
+            background-color: theme('colors.primary-blue');
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+    <!-- Tailwind CSS Configuration for Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#0133a0',
+                        'primary-yellow': '#ffce51',
+                        'light-blue': '#e0e7ff', /* A lighter blue, complementing primary-blue */
+                        'light-yellow': '#fffbe0', /* A very light yellow for backgrounds */
+                        'dark-yellow': '#facc15', /* A slightly darker yellow for hover states */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8 bg-light-yellow">
+    <div class="max-w-7xl w-full bg-white shadow-xl rounded-xl p-6 sm:p-8 lg:p-10">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-10">
+            Financial Manager Mock-up
+        </h1>
+
+        <!-- Notification Area -->
+        <div id="notification-area" class="mb-6 hidden">
+            <div class="px-4 py-3 rounded-md relative" role="alert">
+                <span id="notification-message" class="block sm:inline"></span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="mb-8">
+            <ul class="flex justify-center flex-wrap gap-4">
+                <li>
+                    <button class="tab-button px-6 py-3 rounded-md text-primary-blue bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out font-medium" data-tab="add-transaction">
+                        Add New Transaction
+                    </button>
+                </li>
+                <li>
+                    <button class="tab-button px-6 py-3 rounded-md text-primary-blue bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out font-medium" data-tab="manage-transactions">
+                        Manage Transactions
+                    </button>
+                </li>
+                <li>
+                    <button class="tab-button px-6 py-3 rounded-md text-primary-blue bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out font-medium" data-tab="financial-statements">
+                        Financial Statements
+                    </button>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Tab Content Containers -->
+
+        <!-- Add New Transaction Tab Content -->
+        <div id="add-transaction-content" class="tab-content hidden mb-10 p-6 bg-light-yellow rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Add New Transaction</h2>
+            <form id="transaction-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="date" id="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" id="description" placeholder="e.g., Home Depot Supplies" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                </div>
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                    <input type="number" id="amount" step="0.01" placeholder="e.g., 50.75" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                </div>
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select id="type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                        <option value="debit">Debit (Expense)</option>
+                        <option value="credit">Credit (Revenue)</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="source" class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                    <input type="text" id="source" placeholder="e.g., Checking Account, Credit Card" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                </div>
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-blue hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out">
+                        Add Transaction
+                    </button>
+                </div>
+            </form>
+
+            <hr class="my-8 border-t-2 border-gray-200">
+
+            <!-- CSV Upload Section -->
+            <div class="p-6 bg-primary-blue/5 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Upload Transactions from Bank CSV</h2>
+                <p class="text-sm text-gray-600 mb-4">
+                    Drag and drop your bank's CSV file here, or click to select.
+                    <br>
+                    Expected columns: <code class="font-bold">"Account Name","Processed Date","Description","Check Number","Credit or Debit","Amount"</code>
+                    <br>
+                    <span class="font-semibold">Example:</span> <code class="bg-gray-100 p-1 rounded">"Checking","2023-01-15","Coffee Shop","","Debit","4.50"</code>
+                </p>
+                <div id="csv-drop-area" class="border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-primary-blue hover:bg-gray-50 transition-colors duration-150">
+                    <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                    <p class="text-gray-500 mb-2">Drag & Drop CSV here or <span class="text-primary-blue font-medium">Click to Browse</span></p>
+                    <button id="upload-csv-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-blue hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out mt-2">
+                        Process Uploaded CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Transactions Tab Content (Uncategorized & Categories) -->
+        <div id="manage-transactions-content" class="tab-content hidden mb-10 p-6 bg-gray-50 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Uncategorized Transactions</h2>
+            
+            <!-- Uncategorized Debit/Credit Display -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <!-- Uncategorized Debits -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-between min-h-[180px]">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Debits <span id="debit-count" class="text-sm font-normal text-gray-500">(0)</span></h3>
+                    <div id="uncategorized-debit-display" class="w-full text-center flex-grow flex flex-col justify-center items-center">
+                        <!-- Single Debit Transaction will be rendered here -->
+                        <p class="text-gray-500 text-center">No uncategorized debits.</p>
+                    </div>
+                    <div class="flex justify-between w-full px-4 mt-4">
+                        <button id="prev-debit-btn" class="px-3 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>&leftarrow; Prev</button>
+                        <button id="next-debit-btn" class="px-3 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>Next &rightarrow;</button>
+                    </div>
+                </div>
+
+                <!-- Uncategorized Credits -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-between min-h-[180px]">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Credits <span id="credit-count" class="text-sm font-normal text-gray-500">(0)</span></h3>
+                    <div id="uncategorized-credit-display" class="w-full text-center flex-grow flex flex-col justify-center items-center">
+                        <!-- Single Credit Transaction will be rendered here -->
+                        <p class="text-gray-500 text-center">No uncategorized credits.</p>
+                    </div>
+                    <div class="flex justify-between w-full px-4 mt-4">
+                        <button id="prev-credit-btn" class="px-3 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>&leftarrow; Prev</button>
+                        <button id="next-credit-btn" class="px-3 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>Next &rightarrow;</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-8 border-t-2 border-gray-200">
+
+            <!-- P&L Category Buckets -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-700">P&L Category Buckets</h2>
+                    <button id="create-category-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-blue hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out">
+                        + New Category
+                    </button>
+                </div>
+                <div id="category-buckets" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Categories will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Statements Tab Content -->
+        <div id="financial-statements-content-wrapper" class="tab-content hidden p-6 bg-light-yellow rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Financial Statements</h2>
+            <div class="flex flex-wrap gap-4 mb-6">
+                <button id="generate-statements-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary-blue bg-primary-yellow hover:bg-dark-yellow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-yellow transition duration-150 ease-in-out">
+                    Generate Statements
+                </button>
+                <button id="export-pdf-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-blue hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out">
+                    Export as PDF
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="financial-statements-content">
+                <!-- Profit & Loss Statement -->
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Profit & Loss Statement</h3>
+                    <div class="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+                        <p class="font-medium text-lg mb-2">Revenue: <span id="pnl-revenue" class="font-bold text-primary-blue">$0.00</span></p>
+                        <p class="font-medium text-lg mb-2">Expenses: <span id="pnl-expenses" class="font-bold text-red-600">$0.00</span></p>
+                        <hr class="my-3">
+                        <p class="font-bold text-xl">Net Income: <span id="pnl-net-income" class="font-bold text-primary-blue">$0.00</span></p>
+                    </div>
+                </div>
+
+                <!-- Balance Sheet (Removed from display, but still calculated for insights if needed) -->
+                <span id="bs-assets" class="hidden"></span>
+                <span id="bs-liabilities" class="hidden"></span>
+                <span id="bs-equity" class="hidden"></span>
+            </div>
+
+            <!-- Gemini API Financial Insights Section -->
+            <div class="mt-10 p-6 bg-primary-blue/10 rounded-lg shadow-md">
+                <h3 class="text-2xl font-semibold text-gray-700 mb-4">Financial Insights ✨</h3>
+                <button id="get-insights-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary-blue bg-primary-yellow hover:bg-dark-yellow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-yellow transition duration-150 ease-in-out mb-4">
+                    ✨ Get Financial Insights
+                </button>
+                <div id="insights-output" class="bg-white p-4 rounded-md shadow-sm border border-gray-200 min-h-[80px] flex items-center justify-center text-gray-500">
+                    Click "✨ Get Financial Insights" to generate a summary.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Category Modal -->
+    <div id="new-category-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-category-modal">&times;</span>
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Create New Category</h3>
+            <form id="new-category-form" class="space-y-4">
+                <div>
+                    <label for="new-category-name" class="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
+                    <input type="text" id="new-category-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2" placeholder="e.g., Taxes, COGS">
+                </div>
+                <div>
+                    <label for="new-category-type" class="block text-sm font-medium text-gray-700 mb-1">Statement Type</label>
+                    <select id="new-category-type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-blue focus:ring-primary-blue p-2">
+                        <option value="Expense">Expense</option>
+                        <option value="Income">Income</option>
+                        <option value="Asset">Asset</option>
+                        <option value="Liability">Liability</option>
+                        <option value="Equity">Equity</option>
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-blue hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150 ease-in-out">
+                        Create Category
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Global Data Storage (In-memory for mock-up) ---
+        let transactions = [];
+        let categories = [
+            { id: 'revenue', name: 'Revenue', statementType: 'Income', color: 'bg-primary-yellow/30' },
+            { id: 'general-expense', name: 'General Expense', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'supplies', name: 'Supplies', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'rent', name: 'Rent', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'utilities', name: 'Utilities', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'marketing', name: 'Marketing', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'taxes', name: 'Taxes', statementType: 'Expense', color: 'bg-light-yellow' },
+            { id: 'cogs', name: 'Cost of Goods Sold', statementType: 'Expense', color: 'bg-light-yellow' }
+        ];
+
+        // This object will store aggregated totals per category for PDF export
+        let aggregatedCategoryTotals = {};
+
+        // State for single transaction display in uncategorized sections
+        let uncategorizedDebits = [];
+        let uncategorizedCredits = [];
+        let currentDebitIndex = 0;
+        let currentCreditIndex = 0;
+
+        // State for single transaction display in categorized sections
+        // Maps category ID to an object { transactions: [], currentIndex: 0 }
+        let categorizedTransactionStates = {};
+
+
+        // --- DOM Elements ---
+        const transactionForm = document.getElementById('transaction-form');
+        const csvDropArea = document.getElementById('csv-drop-area');
+        const csvFileInput = document.getElementById('csv-file-input');
+        const uploadCsvBtn = document.getElementById('upload-csv-btn');
+        // Elements for single transaction display
+        const uncategorizedDebitDisplay = document.getElementById('uncategorized-debit-display');
+        const uncategorizedCreditDisplay = document.getElementById('uncategorized-credit-display');
+        const prevDebitBtn = document.getElementById('prev-debit-btn');
+        const nextDebitBtn = document.getElementById('next-debit-btn');
+        const prevCreditBtn = document.getElementById('prev-credit-btn');
+        const nextCreditBtn = document.getElementById('next-credit-btn');
+
+        // New elements for counters
+        const debitCountSpan = document.getElementById('debit-count');
+        const creditCountSpan = document.getElementById('credit-count');
+
+
+        const categoryBucketsDiv = document.getElementById('category-buckets');
+        const generateStatementsBtn = document.getElementById('generate-statements-btn');
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
+        const financialStatementsContent = document.getElementById('financial-statements-content');
+        const pnlRevenueSpan = document.getElementById('pnl-revenue');
+        const pnlExpensesSpan = document.getElementById('pnl-expenses');
+        const pnlNetIncomeSpan = document.getElementById('pnl-net-income');
+        // Hidden BS spans (still needed for insights API)
+        const bsAssetsSpan = document.getElementById('bs-assets');
+        const bsLiabilitiesSpan = document.getElementById('bs-liabilities');
+        const bsEquitySpan = document.getElementById('bs-equity');
+
+        const notificationArea = document.getElementById('notification-area');
+        const notificationMessage = document.getElementById('notification-message');
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        const getInsightsBtn = document.getElementById('get-insights-btn');
+        const insightsOutputDiv = document.getElementById('insights-output');
+
+        // New Category Modal Elements
+        const createCategoryBtn = document.getElementById('create-category-btn');
+        const newCategoryModal = document.getElementById('new-category-modal');
+        const closeCategoryModalBtn = document.getElementById('close-category-modal');
+        const newCategoryForm = document.getElementById('new-category-form');
+        const newCategoryNameInput = document.getElementById('new-category-name');
+        const newCategoryTypeSelect = document.getElementById('new-category-type');
+
+
+        let draggedTransactionId = null;
+
+        // --- Utility Functions ---
+
+        /**
+         * Displays a temporary notification message.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', 'info'.
+         */
+        function showNotification(message, type = 'info') {
+            notificationMessage.textContent = message;
+            const notificationDiv = notificationArea.querySelector('div');
+            notificationDiv.classList.remove('bg-blue-100', 'border-blue-400', 'text-blue-700', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700');
+            notificationArea.classList.remove('hidden');
+            notificationArea.classList.add('block');
+
+            if (type === 'success') {
+                notificationDiv.classList.add('bg-primary-yellow/20', 'border-primary-yellow', 'text-primary-blue');
+            } else if (type === 'error') {
+                notificationDiv.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+            } else { // info
+                notificationDiv.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+
+            setTimeout(() => {
+                notificationArea.classList.add('hidden');
+            }, 3000); // Hide after 3 seconds
+        }
+
+        /**
+         * Formats a number as currency.
+         * @param {number} amount - The amount to format.
+         * @returns {string} - Formatted currency string.
+         */
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        // --- Tab Management Functions ---
+
+        /**
+         * Shows the content for a specific tab and updates active button styles.
+         * @param {string} tabId - The ID of the tab content to show.
+         */
+        function showTab(tabId) {
+            // Hide all tab contents
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Deactivate all tab buttons
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+                button.classList.remove('bg-primary-blue', 'text-white');
+                button.classList.add('bg-gray-100', 'text-primary-blue');
+            });
+
+            // Show the selected tab content
+            const selectedTabContent = document.getElementById(`${tabId}-content${tabId === 'financial-statements' ? '-wrapper' : ''}`); // Special case for statements wrapper
+            if (selectedTabContent) {
+                selectedTabContent.classList.remove('hidden');
+            }
+
+            // Activate the corresponding tab button
+            const selectedTabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+            if (selectedTabButton) {
+                selectedTabButton.classList.add('active');
+                selectedTabButton.classList.remove('bg-gray-100', 'text-primary-blue');
+                selectedTabButton.classList.add('bg-primary-blue', 'text-white');
+            }
+
+            // Re-render relevant sections when tabs are switched to ensure data is fresh
+            if (tabId === 'manage-transactions') {
+                renderTransactions(); // This now handles uncategorized debits/credits and category buckets
+                renderCategories(); // This now renders only P&L buckets
+            } else if (tabId === 'financial-statements') {
+                generateStatements();
+            }
+        }
+
+
+        // --- Render Functions ---
+
+        /**
+         * Renders a single transaction element.
+         * @param {object} transaction - The transaction object.
+         * @returns {HTMLElement} - The created transaction DOM element.
+         */
+        function createTransactionElement(transaction) {
+            const transactionEl = document.createElement('div');
+            transactionEl.draggable = true;
+            transactionEl.dataset.id = transaction.id;
+            transactionEl.classList.add(
+                'transaction-item',
+                'bg-white', 'rounded-md', 'shadow-sm', 'p-3', 'border', 'border-gray-200',
+                'flex', 'flex-col', 'sm:flex-row', 'justify-between', 'items-start', 'sm:items-center', 'gap-2',
+                'cursor-grab', 'w-full' // Added w-full for single display
+            );
+
+            const amountClass = transaction.type === 'debit' ? 'text-red-600' : 'text-primary-blue';
+
+            transactionEl.innerHTML = `
+                <div class="flex-grow">
+                    <p class="font-medium text-gray-800">${transaction.description}</p>
+                    <p class="text-sm text-gray-500">${transaction.date} - ${transaction.source}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-lg font-semibold ${amountClass}">
+                        ${transaction.type === 'debit' ? '-' : ''}${formatCurrency(transaction.amount)}
+                    </div>
+                    <button class="delete-transaction-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-gray-100 transition-colors duration-150" data-id="${transaction.id}" title="Delete Transaction">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm6 3a1 1 0 100 2h-2a1 1 0 100-2h2z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            transactionEl.addEventListener('dragstart', handleDragStart);
+            transactionEl.addEventListener('dragend', (e) => e.target.classList.remove('dragging'));
+            return transactionEl;
+        }
+
+        /**
+         * Renders all transactions into their respective lists (uncategorized or categorized).
+         * Now handles single uncategorized display and single categorized display within buckets.
+         */
+        function renderTransactions() {
+            // Re-initialize categorizedTransactionStates to ensure it's fresh
+            // This needs to happen before populating transactions to ensure empty states are correct
+            categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense').forEach(cat => {
+                // Ensure categorizedTransactionStates has an entry for each P&L category
+                if (!categorizedTransactionStates[cat.id]) {
+                    categorizedTransactionStates[cat.id] = { transactions: [], currentIndex: 0 };
+                } else {
+                    // Clear transactions array for existing categories to repopulate
+                    categorizedTransactionStates[cat.id].transactions = [];
+                }
+            });
+
+
+            // Clear all display areas
+            uncategorizedDebitDisplay.innerHTML = '';
+            uncategorizedCreditDisplay.innerHTML = '';
+            // Clear all categorized buckets' display areas
+            categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense').forEach(cat => {
+                const categoryDisplay = document.getElementById(`category-${cat.id}`).querySelector('.category-transactions-display');
+                if (categoryDisplay) categoryDisplay.innerHTML = '';
+            });
+
+
+            // Populate uncategorized debits/credits and categorized transactions
+            uncategorizedDebits = transactions.filter(t => t.category === 'uncategorized' && t.type === 'debit');
+            uncategorizedCredits = transactions.filter(t => t.category === 'uncategorized' && t.type === 'credit');
+            transactions.filter(t => t.category !== 'uncategorized').forEach(transaction => {
+                if (categorizedTransactionStates[transaction.category]) {
+                    categorizedTransactionStates[transaction.category].transactions.push(transaction);
+                } else {
+                    // Fallback for transactions with invalid categories (shouldn't happen if categories list is managed)
+                    console.warn(`Transaction with unknown category '${transaction.category}' found. Moving to uncategorized.`);
+                    transaction.category = 'uncategorized';
+                    if (transaction.type === 'debit') {
+                        uncategorizedDebits.push(transaction);
+                    } else {
+                        uncategorizedCredits.push(transaction);
+                    }
+                }
+            });
+
+            // Update counters
+            debitCountSpan.textContent = `(${uncategorizedDebits.length})`;
+            creditCountSpan.textContent = `(${uncategorizedCredits.length})`;
+
+            // Render single uncategorized debit
+            if (uncategorizedDebits.length > 0) {
+                currentDebitIndex = currentDebitIndex % uncategorizedDebits.length;
+                uncategorizedDebitDisplay.appendChild(createTransactionElement(uncategorizedDebits[currentDebitIndex]));
+                prevDebitBtn.disabled = false;
+                nextDebitBtn.disabled = false;
+            } else {
+                uncategorizedDebitDisplay.innerHTML = '<p class="text-gray-500 text-center">No uncategorized debits.</p>';
+                prevDebitBtn.disabled = true;
+                nextDebitBtn.disabled = true;
+            }
+
+            // Render single uncategorized credit
+            if (uncategorizedCredits.length > 0) {
+                currentCreditIndex = currentCreditIndex % uncategorizedCredits.length;
+                uncategorizedCreditDisplay.appendChild(createTransactionElement(uncategorizedCredits[currentCreditIndex]));
+                prevCreditBtn.disabled = false;
+                nextCreditBtn.disabled = false;
+            } else {
+                uncategorizedCreditDisplay.innerHTML = '<p class="text-gray-500 text-center">No uncategorized credits.</p>';
+                prevCreditBtn.disabled = true;
+                nextCreditBtn.disabled = true;
+            }
+
+            // Render categorized transactions into their buckets (single display)
+            categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense').forEach(cat => {
+                const categoryDisplayContainer = document.getElementById(`category-${cat.id}`).querySelector('.category-transactions-display');
+                const prevBtn = document.getElementById(`prev-${cat.id}-btn`);
+                const nextBtn = document.getElementById(`next-${cat.id}-btn`);
+
+                if (categorizedTransactionStates[cat.id] && categorizedTransactionStates[cat.id].transactions.length > 0) {
+                    const state = categorizedTransactionStates[cat.id];
+                    state.currentIndex = state.currentIndex % state.transactions.length; // Ensure valid index
+                    categoryDisplayContainer.innerHTML = ''; // Clear previous transaction
+                    categoryDisplayContainer.appendChild(createTransactionElement(state.transactions[state.currentIndex]));
+                    prevBtn.disabled = false;
+                    nextBtn.disabled = false;
+                } else {
+                    categoryDisplayContainer.innerHTML = `<p class="text-gray-400 text-center text-sm py-2">Drag transactions here.</p>`;
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                }
+            });
+
+            // Attach event listeners to delete buttons after rendering
+            document.querySelectorAll('.delete-transaction-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const transactionIdToDelete = e.currentTarget.dataset.id;
+                    handleDeleteTransaction(transactionIdToDelete);
+                });
+            });
+        }
+
+        /**
+         * Renders the category buckets. Now only renders P&L related buckets.
+         */
+        function renderCategories() {
+            categoryBucketsDiv.innerHTML = '';
+            categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense').forEach(category => {
+                let categoryColorClass;
+                switch (category.statementType) {
+                    case 'Income':
+                        categoryColorClass = 'bg-primary-yellow/30';
+                        break;
+                    case 'Expense':
+                        categoryColorClass = 'bg-light-yellow';
+                        break;
+                    default:
+                        categoryColorClass = 'bg-gray-100';
+                }
+
+                const categoryEl = document.createElement('div');
+                categoryEl.id = `category-${category.id}`;
+                categoryEl.dataset.category = category.id;
+                categoryEl.classList.add(
+                    'category-bucket',
+                    categoryColorClass, 'rounded-lg', 'p-4', 'shadow-sm', 'border', 'border-gray-200',
+                    'min-h-[250px]', 'flex', 'flex-col', 'items-center', 'justify-between' // Increased min-h and added flex for layout
+                );
+                categoryEl.innerHTML = `
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">${category.name}</h3>
+                    <div class="category-transactions-display flex-grow w-full text-center flex flex-col justify-center items-center min-h-[150px] border border-dashed border-gray-300 p-2 rounded-md">
+                        <!-- Single Transaction will be rendered here -->
+                        <p class="text-gray-400 text-center text-sm py-2">Drag transactions here.</p>
+                    </div>
+                    <div class="flex justify-between w-full px-2 mt-4">
+                        <button id="prev-${category.id}-btn" class="px-2 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>&leftarrow; Prev</button>
+                        <button id="next-${category.id}-btn" class="px-2 py-1 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50" disabled>Next &rightarrow;</button>
+                    </div>
+                `;
+
+                categoryEl.addEventListener('dragover', handleDragOver);
+                categoryEl.addEventListener('dragleave', handleDragLeave);
+                categoryEl.addEventListener('drop', handleDrop);
+                categoryBucketsDiv.appendChild(categoryEl);
+
+                // Initialize state for new category
+                // This is already done in init and renderTransactions, but good to ensure here too for new categories
+                if (!categorizedTransactionStates[category.id]) {
+                    categorizedTransactionStates[category.id] = { transactions: [], currentIndex: 0 };
+                }
+            });
+
+            // Attach navigation listeners for newly rendered category buckets
+            // This loop needs to be outside the categoryEl creation loop
+            categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense').forEach(category => {
+                const prevBtn = document.getElementById(`prev-${category.id}-btn`);
+                const nextBtn = document.getElementById(`next-${category.id}-btn`);
+
+                if (prevBtn && nextBtn) { // Ensure buttons exist before attaching listeners
+                    prevBtn.addEventListener('click', () => {
+                        const state = categorizedTransactionStates[category.id];
+                        if (state.transactions.length > 0) {
+                            state.currentIndex = (state.currentIndex - 1 + state.transactions.length) % state.transactions.length;
+                            renderTransactions(); // Re-render to update this specific bucket
+                        }
+                    });
+                    nextBtn.addEventListener('click', () => {
+                        const state = categorizedTransactionStates[category.id];
+                        if (state.transactions.length > 0) {
+                            state.currentIndex = (state.currentIndex + 1) % state.transactions.length;
+                            renderTransactions(); // Re-render to update this specific bucket
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Event Handlers ---
+
+        /**
+         * Handles the submission of the new transaction form.
+         * @param {Event} e - The form submission event.
+         */
+        function handleAddTransaction(e) {
+            e.preventDefault();
+
+            const date = document.getElementById('date').value;
+            const description = document.getElementById('description').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+            const source = document.getElementById('source').value;
+
+            if (!date || !description || isNaN(amount) || amount <= 0 || !type) {
+                showNotification('Please fill in all required fields correctly.', 'error');
+                return;
+            }
+
+            const newTransaction = {
+                id: Date.now().toString(), // Simple unique ID for mock-up
+                date,
+                description,
+                amount,
+                type,
+                source: source || 'N/A',
+                category: 'uncategorized' // Always initially uncategorized
+            };
+
+            transactions.push(newTransaction);
+            renderTransactions(); // Re-render to update uncategorized displays
+            transactionForm.reset();
+            showNotification('Transaction added successfully!', 'success');
+        }
+
+        /**
+         * Handles the start of a drag operation.
+         * @param {Event} e - The dragstart event.
+         */
+        function handleDragStart(e) {
+            draggedTransactionId = e.target.dataset.id;
+            e.dataTransfer.setData('text/plain', draggedTransactionId);
+            e.target.classList.add('dragging');
+        }
+
+        /**
+         * Handles the dragover event for drop targets.
+         * @param {Event} e - The dragover event.
+         */
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            // Ensure drag-over class is applied to the direct drop target (category-transactions-display or uncategorized-display)
+            const targetContainer = e.target.closest('.category-transactions-display') || e.target.closest('#uncategorized-debit-display') || e.target.closest('#uncategorized-credit-display');
+            if (targetContainer) {
+                targetContainer.classList.add('drag-over');
+            }
+        }
+
+        /**
+         * Handles the dragleave event for drop targets.
+         * @param {Event} e - The dragleave event.
+         */
+        function handleDragLeave(e) {
+            // Ensure drag-over class is removed from the direct drop target
+            const targetContainer = e.target.closest('.category-transactions-display') || e.target.closest('#uncategorized-debit-display') || e.target.closest('#uncategorized-credit-display');
+            if (targetContainer) {
+                targetContainer.classList.remove('drag-over');
+            }
+        }
+
+        /**
+         * Handles the drop event for drop targets.
+         * @param {Event} e - The drop event.
+         */
+        function handleDrop(e) {
+            e.preventDefault();
+            const targetContainer = e.target.closest('.category-transactions-display') || e.target.closest('#uncategorized-debit-display') || e.target.closest('#uncategorized-credit-display');
+            if (targetContainer) {
+                targetContainer.classList.remove('drag-over');
+            }
+
+            const transactionId = e.dataTransfer.getData('text/plain');
+            let newCategory = 'uncategorized';
+
+            // Determine the new category based on the drop target
+            if (targetContainer.classList.contains('category-transactions-display')) {
+                newCategory = targetContainer.closest('.category-bucket').dataset.category;
+            } else if (targetContainer.id === 'uncategorized-debit-display' || targetContainer.id === 'uncategorized-credit-display') {
+                newCategory = 'uncategorized';
+            } else {
+                return; // Not a valid drop target
+            }
+
+            const transactionIndex = transactions.findIndex(t => t.id === transactionId);
+            if (transactionIndex > -1) {
+                const oldCategory = transactions[transactionIndex].category;
+                transactions[transactionIndex].category = newCategory;
+
+                // If moving from uncategorized to categorized, adjust uncategorized index if current item was moved
+                if (oldCategory === 'uncategorized') {
+                    if (transactions[transactionIndex].type === 'debit') {
+                        currentDebitIndex = Math.max(0, currentDebitIndex - 1); // Adjust index if current item is removed
+                    } else {
+                        currentCreditIndex = Math.max(0, currentCreditIndex - 1);
+                    }
+                }
+                // If moving into a categorized bucket, ensure its index is valid or set to last item
+                if (newCategory !== 'uncategorized' && categorizedTransactionStates[newCategory]) {
+                    const state = categorizedTransactionStates[newCategory];
+                    state.currentIndex = state.transactions.length - 1; // Set to the last item (the one just dropped)
+                }
+
+                renderTransactions(); // Re-render all relevant displays
+                showNotification(`Transaction categorized as "${categories.find(c => c.id === newCategory)?.name || 'Uncategorized'}"`, 'success');
+            }
+        }
+
+        /**
+         * Handles CSV file upload and parses transactions based on bank format.
+         * Assumes CSV format: "Account Name","Processed Date","Description","Check Number","Credit or Debit","Amount"
+         */
+        function handleCsvUpload() {
+            const file = csvFileInput.files[0];
+            if (!file) {
+                showNotification('Please select a CSV file to upload.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const csvContent = event.target.result;
+                const lines = csvContent.split(/\r?\n/).filter(line => line.trim() !== '');
+
+                let newTransactionsCount = 0;
+                let skippedRows = 0;
+
+                const header = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/"/g, '').trim());
+                const colMap = {
+                    'Account Name': header.indexOf('Account Name'),
+                    'Processed Date': header.indexOf('Processed Date'),
+                    'Description': header.indexOf('Description'),
+                    'Credit or Debit': header.indexOf('Credit or Debit'),
+                    'Amount': header.indexOf('Amount')
+                };
+
+                const requiredCols = ['Account Name', 'Processed Date', 'Description', 'Credit or Debit', 'Amount'];
+                const missingCols = requiredCols.filter(col => colMap[col] === -1);
+                if (missingCols.length > 0) {
+                    showNotification(`CSV missing required columns: ${missingCols.join(', ')}. Please check format.`, 'error');
+                    csvFileInput.value = '';
+                    return;
+                }
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(p => p.replace(/"/g, '').trim());
+
+                    if (parts.length <= Math.max(...Object.values(colMap))) {
+                        console.warn(`Skipping malformed CSV row (not enough parts): ${line}`);
+                        skippedRows++;
+                        continue;
+                    }
+
+                    const accountName = parts[colMap['Account Name']];
+                    const processedDate = parts[colMap['Processed Date']];
+                    const description = parts[colMap['Description']];
+                    const creditOrDebit = parts[colMap['Credit or Debit']];
+                    const amountStr = parts[colMap['Amount']];
+
+                    const amount = parseFloat(amountStr);
+                    const type = creditOrDebit.toLowerCase() === 'credit' ? 'credit' : 'debit';
+
+                    // All CSV imported transactions start as uncategorized
+                    let initialCategory = 'uncategorized';
+
+                    if (!processedDate || !description || isNaN(amount) || amount <= 0 || (type !== 'debit' && type !== 'credit')) {
+                        console.warn(`Skipping invalid CSV row data: ${line}`);
+                        skippedRows++;
+                        continue;
+                    }
+
+                    const newTransaction = {
+                        id: Date.now().toString() + '-' + i,
+                        date: processedDate,
+                        description: description,
+                        amount: amount,
+                        type: type,
+                        source: accountName || 'Bank CSV Import',
+                        category: initialCategory
+                    };
+                    transactions.push(newTransaction);
+                    newTransactionsCount++;
+                }
+
+                renderTransactions();
+                csvFileInput.value = '';
+                let message = `${newTransactionsCount} transactions imported from CSV!`;
+                if (skippedRows > 0) {
+                    message += ` (${skippedRows} rows skipped due to errors or malformation).`;
+                }
+                showNotification(message, 'success');
+                showTab('manage-transactions');
+            };
+
+            reader.onerror = () => {
+                showNotification('Error reading CSV file. Please try again.', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+
+        /**
+         * Deletes a transaction from the transactions array and re-renders.
+         * @param {string} idToDelete - The ID of the transaction to delete.
+         */
+        function handleDeleteTransaction(idToDelete) {
+            const initialLength = transactions.length;
+            const transactionToDelete = transactions.find(t => t.id === idToDelete);
+
+            transactions = transactions.filter(t => t.id !== idToDelete);
+
+            if (transactions.length < initialLength) {
+                // If a transaction was deleted from uncategorized, adjust its index
+                if (transactionToDelete.category === 'uncategorized') {
+                    if (transactionToDelete.type === 'debit') {
+                        currentDebitIndex = Math.max(0, currentDebitIndex - 1);
+                    } else {
+                        currentCreditIndex = Math.max(0, currentCreditIndex - 1);
+                    }
+                } else {
+                    // If deleted from a categorized bucket, adjust its index
+                    if (categorizedTransactionStates[transactionToDelete.category]) {
+                        const state = categorizedTransactionStates[transactionToDelete.category];
+                        state.currentIndex = Math.max(0, state.currentIndex - 1);
+                    }
+                }
+
+                showNotification('Transaction deleted successfully!', 'success');
+                renderTransactions(); // Re-render to update the list
+            } else {
+                showNotification('Transaction not found.', 'error');
+            }
+        }
+
+        /**
+         * Handles the creation of a new category.
+         * @param {Event} e - The form submission event.
+         */
+        function handleCreateCategory(e) {
+            e.preventDefault();
+            const categoryName = newCategoryNameInput.value.trim();
+            const statementType = newCategoryTypeSelect.value;
+
+            if (!categoryName) {
+                showNotification('Category name cannot be empty.', 'error');
+                return;
+            }
+
+            const newCategoryId = categoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+            if (categories.some(cat => cat.id === newCategoryId)) {
+                showNotification('Category with this name already exists.', 'error');
+                return;
+            }
+
+            let categoryColorClass;
+            switch (statementType) {
+                case 'Income':
+                    categoryColorClass = 'bg-primary-yellow/30';
+                    break;
+                case 'Expense':
+                    categoryColorClass = 'bg-light-yellow';
+                    break;
+                case 'Asset': // Allow creation of these types, but they won't show in P&L buckets
+                    categoryColorClass = 'bg-primary-blue/10';
+                    break;
+                case 'Liability':
+                    categoryColorClass = 'bg-primary-blue/5';
+                    break;
+                case 'Equity':
+                    categoryColorClass = 'bg-primary-yellow/20';
+                    break;
+                default:
+                    categoryColorClass = 'bg-gray-100';
+            }
+
+            categories.push({
+                id: newCategoryId,
+                name: categoryName,
+                statementType: statementType,
+                color: categoryColorClass
+            });
+
+            // Re-initialize state for the new category if it's P&L related
+            if (statementType === 'Income' || statementType === 'Expense') {
+                categorizedTransactionStates[newCategoryId] = { transactions: [], currentIndex: 0 };
+            }
+
+            renderCategories(); // Re-render categories to show the new one (if it's P&L related)
+            newCategoryForm.reset();
+            newCategoryModal.style.display = 'none';
+            showNotification(`Category "${categoryName}" created successfully!`, 'success');
+        }
+
+
+        /**
+         * Generates and displays simplified financial statements.
+         */
+        function generateStatements() {
+            let totalRevenue = 0;
+            let totalExpenses = 0;
+            let totalAssets = 0; // Still calculate for insights
+            let totalLiabilities = 0; // Still calculate for insights
+            let totalEquity = 0; // Still calculate for insights
+
+            // Initialize category totals
+            aggregatedCategoryTotals = {};
+            categories.forEach(cat => {
+                aggregatedCategoryTotals[cat.id] = 0;
+            });
+            aggregatedCategoryTotals['uncategorized'] = 0; // Uncategorized transactions are NOT included in P&L
+
+            transactions.forEach(t => {
+                // Only include categorized transactions in the P&L calculations
+                if (t.category !== 'uncategorized') {
+                    const category = categories.find(c => c.id === t.category);
+                    if (category) {
+                        if (t.type === 'credit') {
+                            aggregatedCategoryTotals[category.id] += t.amount;
+                        } else { // debit
+                            aggregatedCategoryTotals[category.id] -= t.amount;
+                        }
+
+                        // Sum for overall P&L totals from categorized transactions only
+                        if (category.statementType === 'Income') {
+                            totalRevenue += t.amount;
+                        } else if (category.statementType === 'Expense') {
+                            totalExpenses += t.amount;
+                        }
+                    }
+                }
+                
+                // Balance Sheet totals (still calculated from ALL transactions for insights)
+                const categoryForBS = categories.find(c => c.id === t.category);
+                const statementTypeForBS = categoryForBS ? categoryForBS.statementType : null;
+                switch (statementTypeForBS) {
+                    case 'Asset':
+                        totalAssets += t.amount;
+                        break;
+                    case 'Liability':
+                        totalLiabilities += t.amount;
+                        break;
+                    case 'Equity':
+                        totalEquity += t.amount;
+                        break;
+                }
+            });
+
+            const netIncome = totalRevenue - totalExpenses;
+
+            pnlRevenueSpan.textContent = formatCurrency(totalRevenue);
+            pnlExpensesSpan.textContent = formatCurrency(totalExpenses);
+            pnlNetIncomeSpan.textContent = formatCurrency(netIncome);
+
+            // Update hidden BS spans for insights
+            if (bsAssetsSpan) bsAssetsSpan.textContent = formatCurrency(totalAssets);
+            if (bsLiabilitiesSpan) bsLiabilitiesSpan.textContent = formatCurrency(totalLiabilities);
+            if (bsEquitySpan) bsEquitySpan.textContent = formatCurrency(totalEquity + netIncome);
+
+            showNotification('Financial statements updated!', 'info');
+        }
+
+        /**
+         * Exports the financial statements as a PDF with professional formatting.
+         * Now only exports a detailed Profit & Loss statement.
+         */
+        function exportStatementsAsPdf() {
+            console.log('Attempting PDF export...');
+            const jspdfGlobal = window.jspdf;
+
+            if (!jspdfGlobal) {
+                console.error('Error: window.jspdf is undefined. jsPDF library not loaded.');
+                showNotification('PDF library (jsPDF) not loaded. Please try again.', 'error');
+                return;
+            }
+
+            const tempDoc = new jspdfGlobal.jsPDF();
+            if (typeof tempDoc.autoTable !== 'function') {
+                console.error('Error: jsPDF-AutoTable plugin not loaded or not correctly initialized.');
+                showNotification('PDF AutoTable plugin not loaded. Please try again.', 'error');
+                return;
+            }
+
+            console.log('jsPDF and AutoTable appear to be loaded.');
+
+            const { jsPDF } = jspdfGlobal;
+            const doc = new jsPDF();
+
+            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            const currentYear = new Date().getFullYear();
+
+            // --- Company Header ---
+            doc.setFontSize(24);
+            doc.text("Your Business Name", 105, 20, { align: 'center' });
+            doc.setFontSize(10);
+            doc.text("Profit & Loss Statement", 105, 27, { align: 'center' });
+            doc.text(`For the Year Ended ${currentYear}`, 105, 34, { align: 'center' });
+
+            let yOffset = 50; // Starting Y position for content
+
+            const pnlHeaders = [['Description', 'Amount']];
+            const pnlData = [];
+
+            // Add Income categories
+            pnlData.push(['Revenue:', '']);
+            categories.filter(cat => cat.statementType === 'Income' && aggregatedCategoryTotals[cat.id] !== 0).forEach(cat => {
+                pnlData.push([`  ${cat.name}`, formatCurrency(aggregatedCategoryTotals[cat.id])]);
+            });
+            pnlData.push(['Total Revenue', pnlRevenueSpan.textContent]);
+            pnlData.push(['', '']); // Spacer
+
+            // Add Expense categories
+            pnlData.push(['Expenses:', '']);
+            categories.filter(cat => cat.statementType === 'Expense' && aggregatedCategoryTotals[cat.id] !== 0).forEach(cat => {
+                pnlData.push([`  ${cat.name}`, formatCurrency(Math.abs(aggregatedCategoryTotals[cat.id]))]); // Show expenses as positive in P&L
+            });
+            pnlData.push(['Total Expenses', pnlExpensesSpan.textContent]);
+            pnlData.push(['', '']); // Spacer
+
+            // Net Income
+            pnlData.push(['Net Income:', pnlNetIncomeSpan.textContent]);
+
+            doc.autoTable({
+                startY: yOffset,
+                head: pnlHeaders,
+                body: pnlData,
+                theme: 'grid',
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                    valign: 'middle',
+                    halign: 'left'
+                },
+                headStyles: {
+                    fillColor: '#0133a0',
+                    textColor: '#ffce51',
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                columnStyles: {
+                    0: { cellWidth: 80 },
+                    1: { cellWidth: 40, halign: 'right' }
+                },
+                didParseCell: (data) => {
+                    // Apply bold to main categories and totals
+                    if (data.section === 'body' && data.column.index === 0) {
+                        const text = String(data.cell.text || '');
+                        if (text.endsWith(':') || text.startsWith('Total ')) {
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                },
+                didDrawCell: (data) => {
+                    // Indent sub-categories
+                    if (data.section === 'body' && data.column.index === 0) {
+                        const cellContent = String(data.row.raw[0] || '');
+                        let indent = 0;
+                        if (cellContent.startsWith('  ')) { // Indent for sub-categories
+                            indent = 10;
+                        }
+                        if (indent > 0) {
+                            // Adjust text position instead of redrawing cell
+                            if (data.cell.textPos) { // Check if textPos exists before modifying
+                                data.cell.textPos.x += indent;
+                            } else {
+                                // Fallback: manually draw text if textPos is undefined (e.g., empty cells)
+                                doc.setFillColor(data.cell.styles.fillColor);
+                                doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                                doc.setTextColor(data.cell.styles.textColor);
+                                doc.text(String(data.cell.text || '').trim(), data.cell.x + indent, data.cell.y + data.cell.height / 2, { valign: 'middle' });
+                                return; // Skip default text rendering
+                            }
+                        }
+                    }
+                    // Special styling for Net Income row (color based on value)
+                    if (data.row.raw[0] === 'Net Income:' && data.section === 'body') {
+                        doc.setFillColor('#f0f0f0'); // Light gray background
+                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        
+                        const netIncomeValue = parseFloat(pnlNetIncomeSpan.textContent.replace(/[^0-9.-]+/g, '')); // Parse the numeric value
+                        if (netIncomeValue < 0) {
+                            doc.setTextColor('#FF0000'); // Red for negative
+                        } else {
+                            doc.setTextColor('#008000'); // Green for positive
+                        }
+                        doc.setFont('helvetica', 'bold'); // Ensure bold font for Net Income
+                        doc.text(data.cell.text, data.cell.x + data.cell.padding('left'), data.cell.y + data.cell.height / 2, { valign: 'middle' });
+                        return; // Skip default text rendering
+                    }
+                },
+                margin: { left: 10 }
+            });
+
+            // Save the PDF
+            doc.save('Profit_Loss_Statement.pdf');
+            showNotification('Profit & Loss statement exported as PDF!', 'success');
+        }
+
+        /**
+         * Calls the Gemini API to get financial insights based on current statements.
+         */
+        async function getFinancialInsights() {
+            insightsOutputDiv.innerHTML = '<div class="text-center text-primary-blue">Generating insights... <span class="animate-pulse">✨</span></div>';
+            insightsOutputDiv.classList.remove('text-gray-500'); // Remove initial placeholder styling
+
+            const revenue = pnlRevenueSpan.textContent;
+            const expenses = pnlExpensesSpan.textContent;
+            const netIncome = pnlNetIncomeSpan.textContent;
+            const assets = bsAssetsSpan.textContent; // Still get from hidden spans
+            const liabilities = bsLiabilitiesSpan.textContent; // Still get from hidden spans
+            const equity = bsEquitySpan.textContent; // Still get from hidden spans
+
+            const prompt = `Given the following financial data for a business:
+            - Revenue: ${revenue}
+            - Expenses: ${expenses}
+            - Net Income: ${netIncome}
+            - Assets: ${assets}
+            - Liabilities: ${liabilities}
+            - Equity: ${equity}
+
+            Please provide a concise, professional summary of the financial health of this business. Highlight key strengths, potential areas for improvement, and any notable observations. Keep the response to 2-3 paragraphs.`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+            const payload = { contents: chatHistory };
+            // IMPORTANT: If running locally, replace "" with your actual Gemini API Key.
+            // For Canvas deployment, leave as "" as the key is injected automatically.
+            const apiKey = "AIzaSyAg4YCmKpG6k-TXLcYf2-gZSmIMvb_zIEE"; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API error: ${response.status} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    insightsOutputDiv.innerHTML = `<p class="text-gray-800 whitespace-pre-wrap">${text}</p>`; // Use pre-wrap for line breaks
+                    showNotification('Financial insights generated!', 'success');
+                } else {
+                    insightsOutputDiv.innerHTML = '<p class="text-red-600">Failed to get insights. No content from API.</p>';
+                    showNotification('Failed to get insights.', 'error');
+                }
+            } catch (error) {
+                console.error('Error fetching financial insights:', error);
+                insightsOutputDiv.innerHTML = `<p class="text-red-600">Error: ${error.message}. Could not generate insights.</p>`;
+                showNotification(`Error generating insights: ${error.message}`, 'error');
+            }
+        }
+
+
+        // --- Initialization ---
+        function init() {
+            // Set today's date as default for the form
+            document.getElementById('date').valueAsDate = new Date();
+
+            // Initial categories list (filtered to only P&L types for display)
+            categories = categories.filter(cat => cat.statementType === 'Income' || cat.statementType === 'Expense');
+
+
+            // Initialize categorizedTransactionStates for existing P&L categories
+            categories.forEach(cat => {
+                categorizedTransactionStates[cat.id] = { transactions: [], currentIndex: 0 };
+            });
+
+
+            renderCategories(); // Render categories once
+            // Transactions and statements will be rendered when their tabs are activated
+
+            // Event Listeners for tabs
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    showTab(button.dataset.tab);
+                });
+            });
+
+            // Event Listeners for form and buttons
+            transactionForm.addEventListener('submit', handleAddTransaction);
+
+            // CSV Upload Event Listeners
+            csvDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                csvDropArea.classList.add('border-primary-blue', 'bg-gray-50');
+            });
+            csvDropArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                csvDropArea.classList.remove('border-primary-blue', 'bg-gray-50');
+            });
+            csvDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                csvDropArea.classList.remove('border-primary-blue', 'bg-gray-50');
+                csvFileInput.files = e.dataTransfer.files; // Assign dropped files to input
+                handleCsvUpload(); // Process the file immediately
+            });
+            csvDropArea.addEventListener('click', () => csvFileInput.click()); // Click drop area to open file dialog
+            csvFileInput.addEventListener('change', handleCsvUpload); // Process file when selected via browse button
+
+            // New Category Event Listeners
+            createCategoryBtn.addEventListener('click', () => {
+                newCategoryModal.style.display = 'flex'; // Show the modal
+            });
+            closeCategoryModalBtn.addEventListener('click', () => {
+                newCategoryModal.style.display = 'none'; // Hide the modal
+                newCategoryForm.reset(); // Reset form on close
+            });
+            window.addEventListener('click', (event) => { // Close modal if clicked outside
+                if (event.target == newCategoryModal) {
+                    newCategoryModal.style.display = 'none';
+                    newCategoryForm.reset();
+                }
+            });
+            newCategoryForm.addEventListener('submit', handleCreateCategory);
+
+            // Uncategorized transaction navigation buttons
+            prevDebitBtn.addEventListener('click', () => {
+                if (uncategorizedDebits.length > 0) {
+                    currentDebitIndex = (currentDebitIndex - 1 + uncategorizedDebits.length) % uncategorizedDebits.length;
+                    renderTransactions();
+                }
+            });
+            nextDebitBtn.addEventListener('click', () => {
+                if (uncategorizedDebits.length > 0) {
+                    currentDebitIndex = (currentDebitIndex + 1) % uncategorizedDebits.length;
+                    renderTransactions();
+                }
+            });
+            prevCreditBtn.addEventListener('click', () => {
+                if (uncategorizedCredits.length > 0) {
+                    currentCreditIndex = (currentCreditIndex - 1 + uncategorizedCredits.length) % uncategorizedCredits.length;
+                    renderTransactions();
+                }
+            });
+            nextCreditBtn.addEventListener('click', () => {
+                if (uncategorizedCredits.length > 0) {
+                    currentCreditIndex = (currentCreditIndex + 1) % uncategorizedCredits.length;
+                    renderTransactions();
+                }
+            });
+
+
+            // Drag and drop listeners for uncategorized display areas
+            uncategorizedDebitDisplay.addEventListener('dragover', handleDragOver);
+            uncategorizedDebitDisplay.addEventListener('dragleave', handleDragLeave);
+            uncategorizedDebitDisplay.addEventListener('drop', handleDrop);
+
+            uncategorizedCreditDisplay.addEventListener('dragover', handleDragOver);
+            uncategorizedCreditDisplay.addEventListener('dragleave', handleDragLeave);
+            uncategorizedCreditDisplay.addEventListener('drop', handleDrop);
+
+
+            generateStatementsBtn.addEventListener('click', generateStatements);
+            exportPdfBtn.addEventListener('click', exportStatementsAsPdf);
+            getInsightsBtn.addEventListener('click', getFinancialInsights);
+
+            // Show the default tab on load
+            showTab('add-transaction'); // Start on the add transaction tab
+        }
+
+        // Run initialization when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
